@@ -1,6 +1,6 @@
 # RAGLine
 
-Retrieval-augmented answering built from scratch in pure Python: deterministic sparse embeddings, top-k retrieval, extractive answers with citations, and a grounding check that verifies every answer against the chunk it cites - fully offline, no models, no APIs.
+Retrieval-augmented answering built from scratch in pure Python: deterministic sparse embeddings, top-k retrieval, extractive answers with citations, and a lexical grounding check that scores token overlap between each answer and the chunk it cites - fully offline, no models, no APIs.
 
 RAGLine runs the whole RAG loop as inspectable steps:
 
@@ -8,7 +8,7 @@ RAGLine runs the whole RAG loop as inspectable steps:
 - **embed** - token-hashed sparse TF vectors with IDF weighting computed over the chunk set; cosine similarity is the retrieval score.
 - **retrieve** - top-k chunks per question with descending scores.
 - **answer** - the best-matching sentence from the retrieved chunks, returned with the id of the chunk it came from. Every answer carries a citation.
-- **verify** - a grounding check scores the fraction of answer content tokens present in the cited chunk; below the threshold the answer is flagged ungrounded and `--require-grounded` fails the run.
+- **verify** - a lexical grounding check scores the fraction of answer content tokens present in the cited chunk; below the threshold the answer is flagged ungrounded and `--require-grounded` fails the run. In the suite's negative control, corrupting the citation to an unrelated chunk makes the check flag the answer.
 
 ## Measured results
 
@@ -26,7 +26,7 @@ CI pins these with `--min-recall 1.0 --min-mrr 0.9 --min-grounded 1.0`, and the 
 
 - **Determinism end to end** - same seed, same corpus, same rankings, same answers; pinned in tests.
 - **Retrieval quality** - fixture questions with known topics gate recall@k and MRR.
-- **Grounding, both directions** - correct citations pass at 100% token overlap; corrupted citations and missing chunks are flagged. The negative control runs in the demo and in CI.
+- **Grounding, both directions, within scope** - on the tested fixture, correct citations pass at 100% token overlap, and the tested negative controls (a citation corrupted to an unrelated chunk, a missing chunk) are flagged. The check is lexical: it detects these tested wrong-citation cases, not arbitrary misinterpretation.
 
 ## Usage
 
@@ -50,4 +50,4 @@ bash examples/demo.sh                # offline demo, both gate sides
 
 - Answers are extractive: a sentence copied from the corpus, never generated text. There is no language model here, by design - the project demonstrates the retrieval-and-verification loop, not fluent generation.
 - The embedding is lexical (hashed TF-IDF-style); paraphrases that share no content tokens will not match. Semantic embeddings would need a trained model, which the no-dependency rule excludes.
-- The grounding check verifies token overlap between answer and cited chunk. It catches wrong citations and unsupported wording, not subtle misinterpretation of a correctly cited source.
+- The grounding check is lexical overlap between answer and cited chunk. It catches the tested wrong-citation cases and unsupported wording, not subtle misinterpretation of a correctly cited source.
