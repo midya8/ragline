@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ragline"
+version = "0.1.0"
+description = "Retrieval-augmented answering from scratch with citations and verifiable grounding, fully offline"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[project.scripts]
+ragline = "ragline.cli:main"
