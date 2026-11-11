@@ -12,3 +12,4 @@ license = {text = "MIT"}
 
 [project.scripts]
 ragline = "ragline.cli:main"
+ragline-postings-audit = "ragline.postings_audit:main"
