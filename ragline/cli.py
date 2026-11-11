@@ -11,13 +11,14 @@ from .corpus import build_corpus, chunk_documents
 from .embedder import Embedder
 from .evaluate import evaluate
 from .retriever import Retriever
+from .postings import PostingsRetriever
 
 
-def _pipeline(seed: int, copies: int, dim: int, window: int) -> Retriever:
+def _pipeline(seed: int, copies: int, dim: int, window: int, backend: str = "scan") -> Retriever | PostingsRetriever:
     docs = build_corpus(seed=seed, copies=copies)
     chunks = chunk_documents(docs, window=window)
     embedder = Embedder(dim=dim).fit([c["text"] for c in chunks])
-    return Retriever(chunks, embedder)
+    return (PostingsRetriever if backend == "postings" else Retriever)(chunks, embedder)
 
 
 def _add_pipeline_args(p: argparse.ArgumentParser) -> None:
@@ -25,6 +26,8 @@ def _add_pipeline_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--copies", type=int, default=2)
     p.add_argument("--dim", type=int, default=256)
     p.add_argument("--window", type=int, default=2)
+    p.add_argument("--backend", choices=("scan", "postings"), default="scan",
+                   help="scan is original; postings snapshots the corpus and fitted IDF")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "ask":
-        retriever = _pipeline(args.seed, args.copies, args.dim, args.window)
+        retriever = _pipeline(args.seed, args.copies, args.dim, args.window, args.backend)
         chunks_by_id = {c["chunk_id"]: c for c in retriever.chunks}
         hits = retriever.query(args.question, k=args.k)
         result = answer(args.question, hits)
@@ -71,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "evaluate":
-        retriever = _pipeline(args.seed, args.copies, args.dim, args.window)
+        retriever = _pipeline(args.seed, args.copies, args.dim, args.window, args.backend)
         rep = evaluate(retriever, k=args.k)
         print(f"recall@{args.k}: {rep['recall_at_k']:.2f} | MRR: {rep['mrr']:.2f} | grounded: {rep['grounded_rate']:.2f} over {rep['questions']} questions")
         failed = []
@@ -87,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "json":
-        retriever = _pipeline(args.seed, args.copies, args.dim, args.window)
+        retriever = _pipeline(args.seed, args.copies, args.dim, args.window, args.backend)
         rep = evaluate(retriever, k=args.k)
         rep["config"] = {"seed": args.seed, "copies": args.copies, "dim": args.dim, "window": args.window}
         print(json.dumps(rep, indent=2))
