@@ -1,5 +1,27 @@
 # RAGLine
 
+## Signed postings: preserve the zero
+
+An opt-in `--backend postings` now runs the actual retrieval loop through a fixed-corpus signed-vector index. The original scan remains the default. An unvisited zero can outrank a negative match; touched products can cancel to zero; equal-score ties retain input order. Complete ranking is kept before original slicing and score display.
+
+[Engine contract, reproduction and credited sources](POSTINGS.md) · [Inspectable integer-engine controls](https://midya8.github.io/ragline/)
+
+```bash
+python -m ragline.cli ask --question "How does TCP provide reliable delivery?" --backend postings --require-grounded
+python -m ragline.cli evaluate --backend postings --min-recall 1 --min-mrr .9 --min-grounded 1
+python -m unittest discover -s tests -v
+node --test tests/test_postings_browser.cjs tests/test_postings_chrome.cjs
+bash tools/postings_wheel_smoke.sh
+```
+
+49 Python tests retain all 31 originals unchanged. Independent references cover 729 exhaustive signed-cube controls, 400 seeded real-vector comparisons and 1,350 real hashed-pipeline query/k comparisons. Four Node/actual-Chrome tests check 24 complete reports, another 200 seeded native/browser reports, all 186 rows / 1,161 product cells / 186 SVG marks, responsive views and two trusted exports replayed natively. An isolated installed wheel checks API/module/console reports, 45 pipeline fixture comparisons, both gate sides and nine module origins.
+
+The browser is explicitly a bounded **integer-vector engine** reference, not text/IDF parity or a RAG-quality benchmark. Construction retains dense vectors plus postings and norms; query still creates all scores and sorts the full corpus. One constructed 32×64 control visits one posting instead of 2,048 dense dot-coordinate products, but that is not a timing, memory or general speed claim. Signed hashing, extractive answers and lexical grounding retain their original limits. The snapshot must be rebuilt after corpus/fit changes. No new retrieval-method or semantic-quality claim is made.
+
+The original project and eight-question fixture below are retained. These are engineering checks, not evidence of better retrieval quality.
+
+---
+
 Retrieval-augmented answering built from scratch in pure Python: deterministic sparse embeddings, top-k retrieval, extractive answers with citations, and a lexical grounding check that scores token overlap between each answer and the chunk it cites - fully offline, no models, no APIs.
 
 RAGLine runs the whole RAG loop as inspectable steps:
