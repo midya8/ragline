@@ -1,8 +1,17 @@
 # RAGLine
 
-## Signed postings: preserve the zero
+RAGLine retrieves passages with hashed lexical vectors, copies an answer
+sentence and checks token overlap with its cited chunk. It runs offline in
+pure Python without a language model or external API.
 
-An opt-in `--backend postings` now runs the actual retrieval loop through a fixed-corpus signed-vector index. The original scan remains the default. An unvisited zero can outrank a negative match; touched products can cancel to zero; equal-score ties retain input order. Complete ranking is kept before original slicing and score display.
+The default backend scans the corpus. An optional signed-postings backend
+computes the same rankings through a fixed-corpus index. Its browser inspector
+uses small integer vectors to show the ranking arithmetic, not text retrieval
+quality.
+
+## Signed-postings backend
+
+The optional `--backend postings` runs the actual retrieval loop through a fixed-corpus signed-vector index. The original scan remains the default. An unvisited zero can outrank a negative match; touched products can cancel to zero; equal-score ties retain input order. Complete ranking is kept before original slicing and score display.
 
 [Engine contract, reproduction and credited sources](POSTINGS.md) · [Inspectable integer-engine controls](https://midya8.github.io/ragline/)
 
@@ -32,7 +41,7 @@ RAGLine runs the whole RAG loop as inspectable steps:
 - **answer** - the best-matching sentence from the retrieved chunks, returned with the id of the chunk it came from. Every answer carries a citation.
 - **verify** - a lexical grounding check scores the fraction of answer content tokens present in the cited chunk; below the threshold the answer is flagged ungrounded and `--require-grounded` fails the run. In the suite's negative control, corrupting the citation to an unrelated chunk makes the check flag the answer.
 
-## Measured results
+## Eight-question fixture
 
 Default fixture (seed 0, 40 documents, 32 chunks, dim 256, window 2), from `ragline evaluate`:
 
@@ -42,12 +51,12 @@ Default fixture (seed 0, 40 documents, 32 chunks, dim 256, window 2), from `ragl
 | MRR | 0.94 |
 | grounded-answer rate | 1.00 |
 
-CI pins these with `--min-recall 1.0 --min-mrr 0.9 --min-grounded 1.0`, and the test suite proves the check has teeth: corrupting a citation to point at an unrelated chunk makes the grounding check flag the answer.
+CI pins these with `--min-recall 1.0 --min-mrr 0.9 --min-grounded 1.0`, and a negative control corrupts a citation to an unrelated chunk so the lexical check flags it. These eight questions are development fixtures, not a held-out retrieval benchmark.
 
 ## What is verified
 
 - **Determinism end to end** - same seed, same corpus, same rankings, same answers; pinned in tests.
-- **Retrieval quality** - fixture questions with known topics gate recall@k and MRR.
+- **Fixture retrieval** - eight questions with known topics gate recall@k and MRR.
 - **Grounding, both directions, within scope** - on the tested fixture, correct citations pass at 100% token overlap, and the tested negative controls (a citation corrupted to an unrelated chunk, a missing chunk) are flagged. The check is lexical: it detects these tested wrong-citation cases, not arbitrary misinterpretation.
 
 ## Usage
@@ -66,10 +75,10 @@ bash examples/demo.sh                # offline demo, both gate sides
 - `ragline/retriever.py` - top-k retrieval.
 - `ragline/answerer.py` - extractive answers, citations, grounding check.
 - `ragline/evaluate.py` - fixture evaluation (recall@k, MRR, grounded rate).
-- `tests/` - 31 unit tests covering corpus determinism, embeddings, retrieval ranking, answering, both grounding directions, evaluation metrics, and every CLI gate.
+- `tests/` - the original 31 unit tests cover corpus determinism, embeddings, retrieval ranking, answering, both grounding directions, evaluation metrics, and every CLI gate.
 
 ## Limits
 
 - Answers are extractive: a sentence copied from the corpus, never generated text. There is no language model here, by design - the project demonstrates the retrieval-and-verification loop, not fluent generation.
-- The embedding is lexical (hashed TF-IDF-style); paraphrases that share no content tokens will not match. Semantic embeddings would need a trained model, which the no-dependency rule excludes.
-- The grounding check is lexical overlap between answer and cited chunk. It catches the tested wrong-citation cases and unsupported wording, not subtle misinterpretation of a correctly cited source.
+- The embedding is lexical (hashed TF-IDF-style), not a semantic representation. Shared hash bins can produce similarity without shared words; paraphrase retrieval quality is not evaluated.
+- The grounding check measures lexical overlap between answer and cited chunk. It flags the tested wrong-citation controls, but does not prove entailment, factuality or correct interpretation.
